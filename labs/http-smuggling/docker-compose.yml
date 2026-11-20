@@ -1,0 +1,21 @@
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - lab_net
+
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    networks:
+      - lab_net
+
+
+networks:
+  lab_net:
+    driver: bridge

@@ -1,0 +1,36 @@
+services:
+
+  snmp-agent:
+    build: ./agent
+    container_name: snmp-agent
+    hostname: lab-agent
+    privileged: true
+    networks:
+      - lab_net
+
+  snmp-manager:
+    build: ./manager
+    container_name: snmp-manager
+    hostname: lab-manager
+    networks:
+      - lab_net
+    depends_on:
+      - snmp-agent
+
+  snmp-attacker:
+    build: ./attacker
+    container_name: snmp-attacker
+    hostname: lab-attacker
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./snmpPoC:/snmpPoC:ro
+    networks:
+      - lab_net
+    depends_on:
+      - snmp-agent
+
+networks:
+  lab_net:
+    driver: bridge
