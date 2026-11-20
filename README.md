@@ -9,7 +9,7 @@ Repository for the UniTn guest lecture on network protocol security assessment. 
 `ProtocolsSecurityAssessmentUnitn.pptx` is the slide deck used during the lecture.
 
 Topics covered:
-- Security assessment methodology for network protocols
+- Introduction to information security and security assessment methodology for network protocols.
 - HTTP request smuggling (CL.TE): how frontend/backend disagreements on body framing can be exploited to bypass WAFs and hijack victim requests.
 - SNMP: community strings, information disclosure, write-permission abuse, and RCE via NET-SNMP-EXTEND-MIB.
 
