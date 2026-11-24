@@ -69,4 +69,3 @@ See [`labs/snmp/README.md`](labs/snmp/README.md) for setup and exercise walkthro
 
 - Docker Desktop (or Docker Engine + Compose plugin)
 - Python 3 for `attack.py` in the HTTP smuggling lab
-- macOS or Linux host recommended
