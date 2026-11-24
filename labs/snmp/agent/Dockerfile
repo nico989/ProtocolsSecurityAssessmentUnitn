@@ -16,6 +16,9 @@ RUN wget -q https://github.com/net-snmp/net-snmp/archive/refs/tags/v5.9.4.tar.gz
 
 COPY snmpd.conf /usr/local/etc/snmp/snmpd.conf
 
+# Add a sample user for the shadow file dump demo
+RUN adduser -D admin && echo "admin:admin" | chpasswd
+
 EXPOSE 161/udp
 
 CMD ["/usr/local/sbin/snmpd", "-f", "-Lo", "-C", "-c", "/usr/local/etc/snmp/snmpd.conf"]

