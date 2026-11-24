@@ -1,0 +1,16 @@
+# Log files
+*.log
+*log.txt
+
+# PowerPoint temp files
+~$*.pptx
+~$*.ppt
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Hidden files and folders
+.*
+!.gitignore
