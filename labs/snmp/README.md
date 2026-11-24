@@ -31,6 +31,24 @@ Demonstrates the vulnerabilities covered in the "SNMP Security Issues" slide usi
 
 The snmpPoC files live on your Mac at `labs/snmp/snmpPoC/` and are mounted read-only into the attacker container. Edit them locally and the change is live immediately.
 
+### Files
+
+```
+snmp/
+├── docker-compose.yml   ← agent + manager + attacker on one bridge network
+├── agent/
+│   ├── Dockerfile       ← Net-SNMP snmpd (SNMPv1/v2c)
+│   └── snmpd.conf       ← intentionally vulnerable config (public/private, extend RCE)
+├── manager/
+│   ├── Dockerfile       ← Net-SNMP client
+│   └── poll.sh          ← legitimate NMS, polls snmp-agent every 5s
+├── attacker/
+│   └── Dockerfile       ← snmpPoC deps + arpspoof + tcpdump
+└── snmpPoC/             ← mounted read-only into the attacker container
+    ├── snmp.sh          ← brute-force, MIB dump, write check, RCE detection
+    └── community.txt    ← community-string wordlist (public, private, ...)
+```
+
 ## Start the lab
 
 ```bash
