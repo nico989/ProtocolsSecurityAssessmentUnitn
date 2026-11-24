@@ -2,6 +2,7 @@ services:
 
   snmp-agent:
     build: ./agent
+    image: snmp-alpine-agent
     container_name: snmp-agent
     hostname: lab-agent
     privileged: true
@@ -25,7 +26,7 @@ services:
       - NET_ADMIN
       - NET_RAW
     volumes:
-      - ./snmpPoC:/snmpPoC:ro
+      - ./snmpPoC:/snmpPoC
     networks:
       - lab_net
     depends_on:

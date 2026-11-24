@@ -1,15 +1,21 @@
-FROM ubuntu:22.04
+FROM alpine:3.19
 
-RUN apt-get update && apt-get install -y \
-    snmpd \
-    snmp \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache build-base wget tar perl openssl-dev openssl linux-headers
 
-RUN find /etc/snmp /usr/share/snmp /usr/lib/snmp -name "snmpd.conf" -delete 2>/dev/null || true
+RUN wget -q https://github.com/net-snmp/net-snmp/archive/refs/tags/v5.9.4.tar.gz -O /tmp/net-snmp.tar.gz \
+     && tar -xzf /tmp/net-snmp.tar.gz -C /tmp \
+     && cd /tmp/net-snmp-5.9.4 \
+     && sed -i 's/#define ENABLE_EXTEND_WRITE_ACCESS 0/#define ENABLE_EXTEND_WRITE_ACCESS 1/' agent/mibgroup/agent/extend.c \
+     && grep -n "define ENABLE_EXTEND_WRITE_ACCESS" agent/mibgroup/agent/extend.c \
+     && ./configure --build=aarch64-alpine-linux-musl --prefix=/usr/local --with-defaults --disable-embedded-perl --without-perl-modules \
+          ac_cv_type_fd_mask="unsigned long" \
+     && sed -i 's/#define NETSNMP_FD_MASK_TYPE unknown/#define NETSNMP_FD_MASK_TYPE unsigned long/' include/net-snmp/net-snmp-config.h \
+     && make -j"$(nproc)" \
+     && make install \
+     && cd / && rm -rf /tmp/net-snmp*
 
-COPY snmpd.conf /etc/snmp/snmpd.conf
+COPY snmpd.conf /usr/local/etc/snmp/snmpd.conf
 
 EXPOSE 161/udp
-EXPOSE 162/udp
 
-CMD ["snmpd", "-f", "-Lo", "-C", "-c", "/etc/snmp/snmpd.conf"]
+CMD ["/usr/local/sbin/snmpd", "-f", "-Lo", "-C", "-c", "/usr/local/etc/snmp/snmpd.conf"]
