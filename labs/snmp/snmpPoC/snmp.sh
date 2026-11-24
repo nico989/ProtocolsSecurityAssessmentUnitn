@@ -68,7 +68,7 @@ function get_basic_info {
 	snmpwalk -v 2c -c ${COMMUNITY[0]} $ARG_IP 1.3.6.1.2.1.25.1.6.0 >> $ARG_LOGFILE 2>/dev/null
 
 	log "[INFO] Get Running Programs"
-	snmpwalk -v 2c -c ${COMMUNITY[0]} $ARG_IP 1.3.6.1.2.1.25.4.2.1.2 >> $ARG_LOGFILE 2>/dev/null
+	snmpwalk -v 2c -c ${COMMUNITY[0]} $ARG_IP 1.3.6.1.2.1.25.4.2.1 >> $ARG_LOGFILE 2>/dev/null
 
 	log "[INFO] Get Processes Path"
 	snmpwalk -v 2c -c ${COMMUNITY[0]} $ARG_IP 1.3.6.1.2.1.25.4.2.1.4 >> $ARG_LOGFILE 2>/dev/null

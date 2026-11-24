@@ -133,9 +133,8 @@ Using the first valid community string, the script walks a fixed set of OIDs tha
 | `1.3.6.1.2.1.1.1.0` | OS description and kernel version |
 | `1.3.6.1.2.1.1.5.0` | Hostname |
 | `1.3.6.1.2.1.4.20.1.1` | All configured IP addresses |
-| `1.3.6.1.2.1.25.4.2.1.2` | Every running process name |
+| `1.3.6.1.2.1.25.4.2.1` | Every running process name |
 | `1.3.6.1.2.1.25.6.3.1.2` | Installed software |
-| `1.3.6.1.4.1.77.1.2.25` | Local user accounts |
 | `1.3.6.1.2.1.6.13.1.3` | Open TCP ports |
 
 A single unauthenticated read dumps everything an attacker needs to plan the next step.
@@ -145,8 +144,7 @@ Manual equivalents:
 ```bash
 docker exec snmp-attacker snmpget  -v 2c -c public snmp-agent 1.3.6.1.2.1.1.1.0
 docker exec snmp-attacker snmpget  -v 2c -c public snmp-agent 1.3.6.1.2.1.1.5.0
-docker exec snmp-attacker snmpwalk -v 2c -c public snmp-agent 1.3.6.1.2.1.25.4.2.1.2
-docker exec snmp-attacker snmpwalk -v 2c -c public snmp-agent 1.3.6.1.2.1.25.6.3.1.2
+docker exec snmp-attacker snmpwalk -v 2c -c public snmp-agent 1.3.6.1.2.1.25.4.2.1
 docker exec snmp-attacker snmpwalk -v 2c -c public snmp-agent 1.3.6.1.2.1.6.13.1.3
 ```
 

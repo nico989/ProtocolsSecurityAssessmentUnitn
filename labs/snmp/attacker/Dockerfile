@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN echo "mibs +ALL" >> /etc/snmp/snmp.conf
+RUN echo "mibs +ALL" >> /etc/snmp/snmp.conf \
+ && rm -f /usr/share/snmp/mibs/ietf/SNMPv2-PDU
 
 EXPOSE 161/udp
 EXPOSE 162/udp
