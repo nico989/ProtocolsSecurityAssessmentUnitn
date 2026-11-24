@@ -51,16 +51,13 @@ snmp/
 
 ## Start the lab
 
-First time (builds images):
+Useful docker compose commands:
 
 ```bash
 docker compose up --build -d
-```
-
-Subsequently (reuses existing images):
-
-```bash
 docker compose up -d
+docker compose stop
+docker compose start
 ```
 
 ## Open a shell in the attacker container
