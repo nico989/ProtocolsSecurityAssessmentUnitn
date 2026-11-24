@@ -40,6 +40,16 @@ Topics covered:
 
 ## Labs
 
+### HTTP Request Smuggling (`labs/http-smuggling/`)
+
+CL.TE smuggling lab exploiting a real, dated vulnerability in Pound 4.11.90 (pre-fix commit `d9a983fe`) paired with Gunicorn 19.9.0:
+
+- Pound parses `Transfer-Encoding: chunked ` as unknown and falls back to Content-Length, forwarding both headers to the backend.
+- Gunicorn accepts `chunked ` as chunked encoding (substring match), consumes only the chunked body, and leaves the smuggled prefix in the TCP buffer.
+- The attack smuggles a `GET /admin` prefix past Pound's WAF rule which blocks direct requests to `/admin`. Pound never sees `/admin` in what it forwards, but Gunicorn reassembles the smuggled request and serves the admin endpoint.
+
+See [`labs/http-smuggling/README.md`](labs/http-smuggling/README.md) for a full walkthrough including the fix applied in Pound.
+
 ### SNMP (`labs/snmp/`)
 
 Three-container lab (agent, manager, attacker) demonstrating the most common SNMPv1/v2c weaknesses:
@@ -52,16 +62,6 @@ Three-container lab (agent, manager, attacker) demonstrating the most common SNM
 The attacker container runs [snmpPoC](https://github.com/nico989/snmpPoC) against the agent. A passive sniffing section shows how to intercept manager-agent UDP traffic on a Docker bridge with ARP spoofing.
 
 See [`labs/snmp/README.md`](labs/snmp/README.md) for setup and exercise walkthroughs.
-
-### HTTP Request Smuggling (`labs/http-smuggling/`)
-
-CL.TE smuggling lab exploiting a real, dated vulnerability in Pound 4.11.90 (pre-fix commit `d9a983fe`) paired with Gunicorn 19.9.0:
-
-- Pound parses `Transfer-Encoding: chunked ` as unknown and falls back to Content-Length, forwarding both headers to the backend.
-- Gunicorn accepts `chunked ` as chunked encoding (substring match), consumes only the chunked body, and leaves the smuggled prefix in the TCP buffer.
-- The attack smuggles a `GET /admin` prefix past Pound's WAF rule which blocks direct requests to `/admin`. Pound never sees `/admin` in what it forwards, but Gunicorn reassembles the smuggled request and serves the admin endpoint.
-
-See [`labs/http-smuggling/README.md`](labs/http-smuggling/README.md) for a full walkthrough including the fix applied in Pound.
 
 ---
 
