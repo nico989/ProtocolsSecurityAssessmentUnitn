@@ -52,6 +52,7 @@ http-smuggling/
 
 ```bash
 docker compose up --build
+docker compose up -d
 ```
 
 The Pound build takes 2-3 minutes (compiled from source).
