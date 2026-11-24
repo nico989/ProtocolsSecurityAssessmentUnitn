@@ -24,8 +24,7 @@ Demonstrates the vulnerabilities covered in the "SNMP Security Issues" slide usi
           │  UDP 161 (plain text)
  ┌────────┴─────────┐
  │   snmp-attacker  │  runs snmpPoC + tcpdump
- │   snmpPoC from   │  (files mounted from your Mac)
- │   your Mac       │
+ │                  │  (files mounted from your Mac)
  └──────────────────┘
 ```
 
