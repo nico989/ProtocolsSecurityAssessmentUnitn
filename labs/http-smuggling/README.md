@@ -174,3 +174,6 @@ if (transfer_encoding != TRANSFER_ENCODING_NONE && content_length != NO_CONTENT_
 ```bash
 docker compose down
 ```
+
+## References
+- https://github.com/narfindustries/http-garden

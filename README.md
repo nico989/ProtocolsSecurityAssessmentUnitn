@@ -32,7 +32,7 @@ Topics covered:
         ├── docker-compose.yml
         ├── attack.py           # CL.TE attack script (run from host)
         ├── frontend/           # Pound 4.11.90 (pre-fix, vulnerable)
-        ├── backend/            # Gunicorn 19.9.0 + Flask
+        ├── backend/            # Gunicorn 20.0.4 + Flask
         └── README.md
 ```
 
@@ -42,7 +42,7 @@ Topics covered:
 
 ### HTTP Request Smuggling (`labs/http-smuggling/`)
 
-CL.TE smuggling lab exploiting a real, dated vulnerability in Pound 4.11.90 (pre-fix commit `d9a983fe`) paired with Gunicorn 19.9.0:
+CL.TE smuggling lab exploiting a real, dated vulnerability in Pound 4.11.90 (pre-fix commit `d9a983fe`) paired with Gunicorn 20.0.4:
 
 - Pound parses `Transfer-Encoding: chunked ` as unknown and falls back to Content-Length, forwarding both headers to the backend.
 - Gunicorn accepts `chunked ` as chunked encoding (substring match), consumes only the chunked body, and leaves the smuggled prefix in the TCP buffer.
