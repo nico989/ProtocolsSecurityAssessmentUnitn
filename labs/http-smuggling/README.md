@@ -148,27 +148,6 @@ It parses this as `GET /admin`. The follow-up request line (`GET / HTTP/1.1`) is
 
 ---
 
-## Fix
-
-The upstream fix for this class of bug tracks any Transfer-Encoding value as a distinct state instead of only recognising an exact `chunked` token, and rejects a request that carries both Transfer-Encoding and Content-Length:
-
-```c
-// Vulnerable: only an exact "chunked" token flips the flag;
-// anything else (e.g. "chunked ") leaves the request untracked.
-if (cs_locate_token(val, "chunked", &next))
-    chunked = 1;
-
-// Fixed: track chunked vs. any other (unknown) TE value...
-if (cs_locate_token(val, "chunked", &next))
-    transfer_encoding = TRANSFER_ENCODING_CHUNKED;
-else
-    transfer_encoding = TRANSFER_ENCODING_UNKNOWN;
-
-// ...and reject TE + CL combinations outright.
-if (transfer_encoding != TRANSFER_ENCODING_NONE && content_length != NO_CONTENT_LENGTH)
-    return HTTP_STATUS_BAD_REQUEST;
-```
-
 ## Stop and clean up
 
 ```bash
@@ -176,4 +155,5 @@ docker compose down
 ```
 
 ## References
+- https://portswigger.net/web-security/request-smuggling
 - https://github.com/narfindustries/http-garden
